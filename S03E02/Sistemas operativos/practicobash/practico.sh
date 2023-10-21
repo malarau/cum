@@ -37,11 +37,11 @@ sed - stream editor for filtering and transforming text
         - replacement   The replacement
         - file          Where to look
     
-    s/[.,;:\x27"!?—()-]//g; s/.*/\L&/ $1 -----> Removed some characters which mess with the multi-line comment
+    s/[.,;:\x27"!?-]//g; s/.*/\L&/ $1 -----> Removed some characters which mess with the multi-line comment
 
         Contains 2 expresions:
 
-            s/[.,;:\x27"!?—()-]//g $1
+            s/[.,;:\x27"!?-]//g $1
 
                 - s             s
                     Substitute
@@ -49,6 +49,7 @@ sed - stream editor for filtering and transforming text
                 - regexp        [.,;:"!?-]
                     A character set in regular expressions, matches any single character within the brackets
                     In this case: period, comma, semicolon, colon, single quote (removed for comment), double quote, exclamation mark, question mark, or hyphen
+                    \x27: Represents a single quote
                 
                 - replacement     
                     Replaces every match character in the set for nothing
@@ -213,7 +214,7 @@ head - output the first part of files
 '
 
 # Clean file using regexp (no upper, no special chars)
-clean_file="$(sed 's/[.,;:\x27"!?—()-]//g; s/.*/\L&/' "$1")"
+clean_file="$(sed 's/[.,;:\x27"!?-]//g; s/.*/\L&/' "$1")"
 
 # COUNTING WORDS
 #
