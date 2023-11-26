@@ -1,4 +1,5 @@
-from data_handling import STEP, read_txt
+import time
+from data_handling import STEP, generate_txt, read_txt
 import logging, copy
 
 
@@ -31,64 +32,86 @@ class PagingSystem():
         elif fit_type == "Worst Fit":
             return self.worst_fit(next_process_mem)
         else:
-            logging.info("Not a valid option.")
+            logging.debug("Not a valid option.")
             return -1
 
     def best_fit(self, next_process_mem):
-        logging.info("Using Best Fit...")
+        logging.debug("Using Best Fit...")
 
         best_index = -1
-        best_size = float('inf')  # Biggest value
+        best_block = None
 
-        for i, space in enumerate(self.free_memory_schema):
-            if next_process_mem <= space[1] < best_size:
-                best_index = space[0]
-                best_size = space[1] # This is the best fit... Just for now
+        # Sort by free available blocks: x[1], ASC
+        self.free_memory_schema.sort(key=lambda x: x[1])
 
-        if best_index != -1:
-            # We have a winner! Updating values
-            self.free_memory_schema[i][0] += next_process_mem
-            self.free_memory_schema[i][1] -= next_process_mem
-            # Check if the used block now is a empty block, if so, delete it
-            if self.free_memory_schema[i][1] == 0:
-                self.free_memory_schema.pop(i)
-            return best_index
+        # Iterate to find a block with enough space
+        for i in range(len(self.free_memory_schema)):
+            if next_process_mem <= self.free_memory_schema[i][1]:
+                # Obtener el índice del bloque encontrado
+                best_block = self.free_memory_schema[i]
+                logging.debug(f"\tYes, we have a block with enough space: {best_block[1]}")
+                break
 
-        logging.info("\tNo, we don't have enough space, queuing...")
-        return -1
+        if best_block != None:
+            # Update values
+            best_index = best_block[0]
+            best_block[0] += next_process_mem
+            best_block[1] -= next_process_mem
+
+            # Check if now is a empty block
+            if best_block[1] == 0:
+                self.free_memory_schema.pop(i) 
+        else:
+            logging.debug("\tNo, we don't have enough space, queuing...")
+
+        # Standar sort
+        self.free_memory_schema.sort(key=lambda x: x[0])
+        return best_index
 
     def worst_fit(self, next_process_mem):
-        logging.info("Using Worst Fit...")
+        logging.debug("Using Worst Fit...")
 
         worst_index = -1
-        worst_size = -1  # Small value
+        worst_block = None
 
-        for i, space in enumerate(self.free_memory_schema):
-            if next_process_mem <= space[1] > worst_size:
-                worst_index = space[0]
-                worst_size = space[1]
+        #print("Len self.free_memory_schema", len(self.free_memory_schema))
 
-        if worst_index != -1:
-            # We have a winner, update values
-            self.free_memory_schema[i][0] += next_process_mem
-            self.free_memory_schema[i][1] -= next_process_mem
-            # Check if the used block now is a empty block, if so, delete it
-            if self.free_memory_schema[i][1] == 0:
-                self.free_memory_schema.pop(i)
-            return worst_index
+        # Sort by free available blocks: x[1], DESC
+        self.free_memory_schema.sort(key=lambda x: x[1], reverse=True)
 
-        logging.info("\tNo, we don't have enough space, queuing...")
-        return -1
+        # Iterate to find a block with enough space
+        if len(self.free_memory_schema) > 0 and next_process_mem <= self.free_memory_schema[0][1]: 
+            # Obtener el índice del bloque encontrado
+            worst_block = self.free_memory_schema[0]
+            logging.debug(f"\tYes, we have a block with enough space: {worst_block}")
+
+
+        if worst_block != None:
+            # Update values
+            worst_index = worst_block[0]
+            worst_block[0] += next_process_mem
+            worst_block[1] -= next_process_mem
+
+            # Check if now is a empty block
+            if worst_block[1] == 0:
+                pop_elem = self.free_memory_schema.pop(0) 
+                logging.debug("pop elem: {pop_elem}")
+        else:
+            logging.debug("\tNo, we don't have enough space, queuing...")
+
+        # Standar sort
+        self.free_memory_schema.sort(key=lambda x: x[0])
+        return worst_index
 
 
     def first_fit(self, next_process_mem):
-        logging.info("Cheking for free space...")
+        logging.debug("Cheking for free space...")
 
         # Iterates over every free memory block
         for i, space in enumerate(self.free_memory_schema):
             # Is there enough space?
             if next_process_mem <= space[1]:
-                logging.info(f"\tYes, we have a with enough space: {space}")
+                logging.debug(f"\tYes, we have a block with enough space: {space}")
                 index = space[0]
                 # Update index on starting block
                 space[0] = space[0] + next_process_mem
@@ -98,7 +121,7 @@ class PagingSystem():
                     self.free_memory_schema.pop(i)
                 return index
         else:
-            logging.info("\tNo, we have not enough space, to queue...")
+            logging.debug("\tNo, we have not enough space, to queue...")
 
         return -1
 
@@ -126,7 +149,7 @@ class PagingSystem():
 
     # [0:Nombre proceso | 1:tiempo de inicio | 2:tiempo restante | 3:bloque de inicio | 4:bloques usados] 
     def compact_memory(self):
-        logging.info("> Compacting memory!")
+        logging.debug("> Compacting memory!")
         used_blocks = 0
         tmp_memory_schema = []
 
@@ -147,28 +170,58 @@ class PagingSystem():
         self.print_memory_schema()
         self.print_free_mem_schema()
 
-
+    # [0:Nombre proceso | 1:tiempo de inicio | 2:tiempo restante | 3:bloque de inicio | 4:bloques usados] 
     # The process is no longer active, append his mem to free memory schema
-    def on_free_memory(self, process):    
-        for i, free_block in enumerate(self.free_memory_schema):
-            # If starting process block is less than {free_block}
-            if process[3] < free_block[0]:
-                # If there are no gaps, update {free_block}
-                if process[3] + process[4] == free_block[0]:
-                    # [ process | free_block ] <---- Combine
-                    free_block[0] = process[3]
-                    free_block[1] = free_block[1] + process[4]
-                elif i != 0 and self.free_memory_schema[i-1][0] + self.free_memory_schema[i-1][1] == free_block[0]:
-                    #[ free_memory_schema[i-1] | process | free_block ] <---- Combine all
-                    self.free_memory_schema[i-1][1] = self.free_memory_schema[i-1][1] + free_block[1]
-                    self.free_memory_schema.pop(i)
-                else:
-                    # Otherwise, just append
-                    self.free_memory_schema.insert(i, [process[3], process[4]])
-                return
-        # It was the last block
-        self.free_memory_schema.append([process[3], process[4]])
 
+    def on_free_memory(self, process):
+        # Agregar el bloque liberado en la posición adecuada
+        inserted = False
+        for i, free_block in enumerate(self.free_memory_schema):
+            if process[3] < free_block[0]:
+                # Insertar el bloque liberado en la posición adecuada
+                self.free_memory_schema.insert(i, [process[3], process[4]])
+                inserted = True
+                break
+
+        #print("tmp:")
+        #self.print_free_mem_schema()
+
+        # Si era el último bloque o no hay bloques libres
+        if not inserted or (self.free_memory_schema and process[3] >= self.free_memory_schema[-1][0] + self.free_memory_schema[-1][1]):
+            # Insertar al final
+            self.free_memory_schema.append([process[3], process[4]])
+
+        # Escaneo para combinar bloques adyacentes
+        i = 0
+        tmp_free_memory_schema = []
+        while i < len(self.free_memory_schema):
+            # Combinar con el bloque siguiente si es posible
+            if i+1 < len(self.free_memory_schema) and self.free_memory_schema[i][0] + self.free_memory_schema[i][1] == self.free_memory_schema[i+1][0]:
+                logging.debug(f"\tCombinando {self.free_memory_schema[i]} con {self.free_memory_schema[i+1]}")
+                # [ free_block | process ] <---- Combine
+                tmp_free_memory_schema.append([self.free_memory_schema[i][0], self.free_memory_schema[i][1]+self.free_memory_schema[i+1][1]])
+                #self.free_memory_schema[i][1] += self.free_memory_schema[i+1][1]
+                try:
+                    logging.debug(f"\tComparando tmp_free_memory_schema[-1][0]+tmp_free_memory_schema[-1][1]: {tmp_free_memory_schema[-1][0]+tmp_free_memory_schema[-1][1]}, con self.free_memory_schema[i+2][0]: {self.free_memory_schema[i+2][0]}")
+                    logging.debug(f"\tY si i+2 {i+2} es < a len(tmp_free_memory_schema): {len(self.free_memory_schema)}")
+                except Exception:
+                    pass
+                
+                if i+2 < len(self.free_memory_schema) and tmp_free_memory_schema[-1][0]+tmp_free_memory_schema[-1][1] == self.free_memory_schema[i+2][0]:
+                    # [ [ free_block | process ] | free_block ] <---- Combine
+                    last_added = tmp_free_memory_schema.pop()
+                    logging.debug(f"\t\tCombinando {last_added} con {self.free_memory_schema[i+2]}")
+                    tmp_free_memory_schema.append([last_added[0], last_added[1]+self.free_memory_schema[i+2][1]])
+                    i += 3
+                else:
+                    i += 2
+            else:
+                tmp_free_memory_schema.append(self.free_memory_schema[i])
+                i += 1
+
+        #print("tmp_free_memory_schema: ", tmp_free_memory_schema)
+        self.free_memory_schema = tmp_free_memory_schema
+        
     def remove_inactive_processes(self):
         tmp_memory = []
             
@@ -177,31 +230,84 @@ class PagingSystem():
             if working_process[2] > 0:
                 tmp_memory.append(working_process)
             else:
-                logging.info(f"Process {working_process} is no longer active")
+                logging.debug(f"Process {working_process} is no longer active")
                 self.on_free_memory(working_process)
                 self.print_free_mem_schema()
 
         self.memory_schema = tmp_memory
 
     def print_free_mem_schema(self):
-        logging.info("> free_memory_schema:")
-        for p in self.free_memory_schema:
-            logging.info(p)
+        logging.debug("> free_memory_schema:")
+        if len(self.free_memory_schema) != 0:
+            for p in self.free_memory_schema:
+                logging.debug(p)
+        else:
+            logging.debug("[]")
 
     def print_queue(self):
-        logging.info("> queue:")
-        for p in self.queue:
-            logging.info(p)
+        logging.debug("> queue:")
+        if len(self.queue) != 0:
+            for p in self.queue:
+                logging.debug(p)
+        else:
+            logging.debug("[]")
 
     def print_memory_schema(self):
-        logging.info("> memory_schema:")
-        for p in self.memory_schema:
-            logging.info(p)
+        logging.debug("> memory_schema:")
+        if len(self.memory_schema) != 0:
+            for p in self.memory_schema:
+                logging.debug(p)
+        else:
+            logging.debug("[]")
 
     def print_memory_history_log(self):
-        logging.info("> memory_history_log:")
+        logging.debug("> memory_history_log:")
         for p in self.memory_history_log:
-            logging.info(p)
+            logging.debug(p)
+
+    def print_memory_status(self, t, is_waiting):
+        # [ process_name | start_block | end_block ]
+        mem_blocks = []
+
+        # Append all mem blocks
+        for mem_block in self.memory_schema:
+            mem_blocks.append([mem_block[0], mem_block[3], mem_block[4]])
+        # Append all free mem blocks
+        for free_mem_block in self.free_memory_schema:
+            mem_blocks.append(["  ", free_mem_block[0], free_mem_block[1]])
+
+        # Sort using start_block
+        mem_blocks.sort(key=lambda x: x[1])
+
+        # Print values
+        mem_buffer = ">>"
+        for block in mem_blocks:
+            mem_buffer = mem_buffer + "["
+            for _ in range(block[2]):
+                mem_buffer = f"{mem_buffer} {block[0]:1} |"
+            mem_buffer = mem_buffer[:-1]
+            mem_buffer = mem_buffer + "]"
+            
+        mem_buffer = mem_buffer + "<<"
+
+        logging.info(f"\n\t[t = {t}]")
+        
+        logging.info("Memory:")
+        logging.info("\t"+mem_buffer)
+        
+        logging.info("Is waiting?")
+        logging.info(f"\t {is_waiting == -1}")
+        
+        logging.info("Queue:")
+        msg_queue = "["
+        for p in self.queue:
+            msg_queue = f"{msg_queue} {p[0]}"
+        msg_queue = f"{msg_queue} ]"
+        if len(self.queue) != 0:
+            logging.info("\t"+msg_queue)
+        else:
+            logging.info("\t[]")
+
 
     def run_algorithm(self, fit_type):
         # Read data
@@ -244,7 +350,8 @@ class PagingSystem():
         t = 1
         # While remaining process on txt file or Q:
         while(len(p_list) > 0 or len(self.queue) > 0):
-            logging.info(f"\n\t[t = {t}]")
+            #time.sleep(0.5)
+            logging.debug(f"\n\t[t = {t}]")
             t += 1
             
             self.print_memory_schema()
@@ -269,7 +376,9 @@ class PagingSystem():
             avaiable_index = self.get_available_space_index(int(self.queue[0][3]/STEP), fit_type)
 
             if avaiable_index != -1:
-                self.add_to_mem_schema(self.queue.pop(0), avaiable_index)           
+                new_process = self.queue.pop(0)
+                logging.debug(f"\tAdding process: {new_process}]")
+                self.add_to_mem_schema(new_process, avaiable_index)           
 
             for working_process in self.memory_schema:
                 working_process[2] -= 1
@@ -279,16 +388,31 @@ class PagingSystem():
             for p in self.queue:
                 self.waiting_on_queue[p[0]] = self.waiting_on_queue.get(p[0], 0) + 1
 
-            logging.info("---------------")
+            logging.debug("---------------")
+            self.print_memory_status(t, avaiable_index)
             
-        return self.waiting_on_queue, self.memory_history_log
+        return self.waiting_on_queue, self.memory_history_log, t 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     fit_types = ["First Fit", "Best Fit", "Worst Fit"]    
 
-    exp = PagingSystem()
-    exp.run_algorithm(fit_types[0])
+    # Get a new file
+    for i in range(1):
+        print("i: ", i)
+        generate_txt(15)
 
-    # {'P3': 1, 'P4': 2, 'P5': 2}
+        exp = PagingSystem()
+        exp.run_algorithm(fit_types[0])
+        print("\tDone:",fit_types[0])
+        
+        """
+        exp = PagingSystem()
+        exp.run_algorithm(fit_types[1])
+        print("\tDone:",fit_types[1])
+        
+        exp = PagingSystem()
+        exp.run_algorithm(fit_types[2])
+        print("\tDone:",fit_types[2])
+        """
