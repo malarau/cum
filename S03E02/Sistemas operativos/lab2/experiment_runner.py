@@ -134,9 +134,9 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.CRITICAL)
 
     # (number_of_experiments, number_of_process)
-    number_of_experiments = 100
-    number_of_process = 25
-    results, results_compacting = run_experiments(number_of_experiments, number_of_process, .2)
+    number_of_experiments = 1000
+    number_of_process = 50
+    results, results_compacting = run_experiments(number_of_experiments, number_of_process, .4)
     #print_all_results(results)
 
     print(f"After {number_of_experiments} experiments")

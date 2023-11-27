@@ -8,10 +8,10 @@ LOWER_LIMIT = 100
 STEP = 10
 
 # Max process duration
-MAX_DURATION = 6
+MAX_DURATION = 12
 
 # How much space will use processes in t0
-T0_FILL_PERCENT = .5
+T0_FILL_PERCENT = .8
 
 """
     Primera línea: Un valor numérico natural factor de 10, que se encuentra entre 100 y 200.
@@ -49,7 +49,7 @@ def get_firts_processes(max_memory):
         p_time = random.randint(1, MAX_DURATION)
 
         # Adding values
-        process_list.append(f"P{str(len(process_list)+1)},  t0, {p_time}, {p_memory} kb")
+        process_list.append(f"P{(str(len(process_list)+1)).zfill(2)},  t0, {p_time}, {p_memory} kb")
     return process_list
 
 def get_last_n_processes(n, size_firts_n, max_memory):
@@ -66,7 +66,7 @@ def get_last_n_processes(n, size_firts_n, max_memory):
         p_time = random.randint(1, MAX_DURATION)
 
         # Adding values
-        process_list.append(f"P{str(len(process_list)+size_firts_n+1)}, t{str(i+1)}, {p_time}, {p_memory} kb")
+        process_list.append(f"P{(str(len(process_list)+size_firts_n+1)).zfill(2)}, t{str(i+1)}, {p_time}, {p_memory} kb")
     return process_list
 
 """
@@ -134,7 +134,7 @@ if __name__ == "__main__":
         EJ: GENERA UN NUEVO TEXTO, CON 15 PROCESOS
         generate_txt(15)
     """
-    #generate_txt(15)
+    generate_txt(15)
     
     mem, data = read_txt()
     for d in data:

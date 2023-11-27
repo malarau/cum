@@ -171,44 +171,40 @@ class PagingSystem():
         self.print_free_mem_schema()
 
     # [0:Nombre proceso | 1:tiempo de inicio | 2:tiempo restante | 3:bloque de inicio | 4:bloques usados] 
-    # The process is no longer active, append his mem to free memory schema
-
+    # The process is no longer active, append his mem to free memory schema:
+    #       It has to put the new free memory block on a specific position in the free_memory_schema
     def on_free_memory(self, process):
-        # Agregar el bloque liberado en la posición adecuada
         inserted = False
+        # Iterate over free memory schema finding when a starting block for a already free block of memory is greater than the starting block of the new one.
         for i, free_block in enumerate(self.free_memory_schema):
             if process[3] < free_block[0]:
-                # Insertar el bloque liberado en la posición adecuada
+                # If new starting block < some current starting block, insert on that specific position
                 self.free_memory_schema.insert(i, [process[3], process[4]])
                 inserted = True
                 break
 
-        #print("tmp:")
-        #self.print_free_mem_schema()
-
-        # Si era el último bloque o no hay bloques libres
+        # What if the new block was the latest block or there is no free memory blocks until now?
         if not inserted or (self.free_memory_schema and process[3] >= self.free_memory_schema[-1][0] + self.free_memory_schema[-1][1]):
-            # Insertar al final
+            # Just append
             self.free_memory_schema.append([process[3], process[4]])
 
-        # Escaneo para combinar bloques adyacentes
+        # COMBINE BLOCKS
         i = 0
         tmp_free_memory_schema = []
         while i < len(self.free_memory_schema):
-            # Combinar con el bloque siguiente si es posible
+            # We have to check if just behind, there is a block of free memory, so we can combine
+            # [ free_block | process ] <---- Combine
             if i+1 < len(self.free_memory_schema) and self.free_memory_schema[i][0] + self.free_memory_schema[i][1] == self.free_memory_schema[i+1][0]:
                 logging.debug(f"\tCombinando {self.free_memory_schema[i]} con {self.free_memory_schema[i+1]}")
-                # [ free_block | process ] <---- Combine
                 tmp_free_memory_schema.append([self.free_memory_schema[i][0], self.free_memory_schema[i][1]+self.free_memory_schema[i+1][1]])
-                #self.free_memory_schema[i][1] += self.free_memory_schema[i+1][1]
                 try:
                     logging.debug(f"\tComparando tmp_free_memory_schema[-1][0]+tmp_free_memory_schema[-1][1]: {tmp_free_memory_schema[-1][0]+tmp_free_memory_schema[-1][1]}, con self.free_memory_schema[i+2][0]: {self.free_memory_schema[i+2][0]}")
                     logging.debug(f"\tY si i+2 {i+2} es < a len(tmp_free_memory_schema): {len(self.free_memory_schema)}")
                 except Exception:
                     pass
-                
+                # Now, we check if we are on the middle, between 2 free blocks of memory
+                # [ [ free_block | process ] | free_block ] <---- Combine
                 if i+2 < len(self.free_memory_schema) and tmp_free_memory_schema[-1][0]+tmp_free_memory_schema[-1][1] == self.free_memory_schema[i+2][0]:
-                    # [ [ free_block | process ] | free_block ] <---- Combine
                     last_added = tmp_free_memory_schema.pop()
                     logging.debug(f"\t\tCombinando {last_added} con {self.free_memory_schema[i+2]}")
                     tmp_free_memory_schema.append([last_added[0], last_added[1]+self.free_memory_schema[i+2][1]])
@@ -218,8 +214,6 @@ class PagingSystem():
             else:
                 tmp_free_memory_schema.append(self.free_memory_schema[i])
                 i += 1
-
-        #print("tmp_free_memory_schema: ", tmp_free_memory_schema)
         self.free_memory_schema = tmp_free_memory_schema
         
     def remove_inactive_processes(self):
@@ -228,8 +222,10 @@ class PagingSystem():
         for working_process in self.memory_schema:
             # Check if process has remaining time = active
             if working_process[2] > 0:
+                # Save it
                 tmp_memory.append(working_process)
             else:
+                # Dont save it (remove from memory_schema)
                 logging.debug(f"Process {working_process} is no longer active")
                 self.on_free_memory(working_process)
                 self.print_free_mem_schema()
@@ -274,7 +270,7 @@ class PagingSystem():
             mem_blocks.append([mem_block[0], mem_block[3], mem_block[4]])
         # Append all free mem blocks
         for free_mem_block in self.free_memory_schema:
-            mem_blocks.append(["  ", free_mem_block[0], free_mem_block[1]])
+            mem_blocks.append(["   ", free_mem_block[0], free_mem_block[1]])
 
         # Sort using start_block
         mem_blocks.sort(key=lambda x: x[1])
