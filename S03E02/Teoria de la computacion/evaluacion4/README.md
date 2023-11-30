@@ -2,7 +2,7 @@
 
 ### Caso:
 
-$ L = { a^nb^n | n ∈ N } $
+$` L = { a^nb^n | n ∈ N } `$
 
 ### Input: data.txt
 
