@@ -1,0 +1,1 @@
+## Gato en SWI Prolog
