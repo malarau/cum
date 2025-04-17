@@ -1,0 +1,1 @@
+Install Flask using pip or create a virtual env

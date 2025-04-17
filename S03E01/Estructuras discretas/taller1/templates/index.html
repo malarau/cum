@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Buscador de películas y actores</title>
+	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+	<div class="container">
+		<h2>Buscador de actores o películas</h2>
+		<p>Introduce tu búsqueda en el cuadro para obtener resultados.</p>
+			<form action="" method="GET">
+				<div class="search-container">
+					<select name="searchtype">
+						{% if search_type == 'actors'%}
+							<option value="actors">Buscar actores</option>
+							<option value="movies">Buscar películas</option>
+						{% else %}
+							<option value="actors">Buscar actores</option>
+							<option value="movies" selected>Buscar películas</option>
+						{% endif %}	
+					</select>
+					{% if results %}
+					<input type="text" name="search" placeholder="Buscar..." value="{{ query }}">
+					{% else %}
+						<input type="text" name="search" placeholder="Buscar...">
+					{% endif %}	
+					<input type="submit" value="Buscar">
+				</div>
+			</form>
+		<div class="divider"></div>
+		<div class="results">
+			{% if results %}
+				{% if search_type == 'movies'%}
+					<div class="movie-list-container">
+						<ul class="movie-list">
+							{% for movie in results %}
+								<li>{{ movie['name'] }} (<a href="https://www.imdb.com/title/{{ movie['id'] }}/" target="_blank">{{ movie['id'] }}</a>)</li>
+							{% endfor %}
+						</ul>
+					</div>
+				{% else %}
+					<ul>
+						{% for actor in results %}
+							<li>
+								<h3>{{ actor['name'] }} <a href="https://www.imdb.com/name/{{ actor['id'] }}/">({{ actor['id'] }})</a></h3>
+							<ul>
+								{% for movie in actor['knownForTitles'] %}
+									<li>{{ movie['title'] }} (<a href="https://www.imdb.com/title/{{ movie['id'] }}/">{{ movie['id'] }}</a>)</li>
+								{% endfor %}
+							</ul>
+							</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			{% else %}
+				{% if query %}
+					<p>No se encontraron resultados.</p>
+				{% endif %}
+			{% endif %}
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Buscador de películas y actores</title>
+	<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+	<div class="container">
+		<h2>Resultados de búsqueda:</h2>
+        <div class="divider"></div>
+        <div class="results">
+            {{data}}
+        </div>
+	</div>
+</body>
+</html>
